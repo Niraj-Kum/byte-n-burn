@@ -37,8 +37,10 @@ Google Drive sync (optional, keeps phone and laptop in step)
     4. Credentials > Create credentials > OAuth client ID > Web application.
     5. Authorized JavaScript origins: the address where you host the app, for example
        https://yourname.github.io  (origin only, no path, no trailing slash).
-    6. Copy the client ID. In the app tap Sync (top right), paste it, press Connect and sync.
-  Repeat the paste step on each device. The app stores one small file in a hidden app folder
+    6. Copy the client ID and put it in index.html, in the line  var DEFAULT_CLIENT="..."  then redeploy.
+       (This copy already has Niraj's ID. The app only shows it, it cannot be edited in the app.)
+    7. In the app tap Sync (top right) > Connect and sync.
+  The app stores one small file in a hidden app folder
   of your Drive and cannot see your other files.
   Limits to know:
     - Google sign-in lasts about an hour. After that the app may ask you to tap Sync now once.

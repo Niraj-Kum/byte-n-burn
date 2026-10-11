@@ -32,6 +32,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--body
 input[type=text]{font:400 14px var(--body);background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%}
 details.how summary{cursor:pointer;color:var(--blue);font-weight:600;font-size:14px}
 details.how ol{margin:8px 0 0;padding-left:20px;font-size:14px}
+.cid{display:block;word-break:break-all;font:500 12px var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
 .lnk{background:none;border:0;padding:0;font:inherit;color:var(--blue);text-decoration:underline;cursor:pointer}
 .gear{font:600 13px var(--body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer}
 #stage{flex:1;min-height:0;position:relative}
@@ -100,9 +101,8 @@ textarea{font:400 12px/1.4 var(--mono);background:var(--bg);color:var(--ink);bor
     <p class="fine" style="margin:0">Your ticks, notes and logs live on this device. Connect Google Drive to keep every device in step.</p>
     <h3 style="margin:0;font:800 16px var(--display)">Google Drive sync</h3>
     <p class="fine" id="y-msg" style="margin:0">Not connected.</p>
-    <div id="y-have" class="fine" hidden>Client ID saved on this device. <button type="button" class="lnk" id="y-change">Change</button></div>
-    <div id="y-idrow"><label class="fine" for="y-id">Google client ID</label>
-    <input type="text" id="y-id" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="1234567890-abc.apps.googleusercontent.com"></div>
+    <div class="fine">Google client ID (set in the app code)</div>
+    <code id="y-cid" class="cid"></code>
     <div class="row"><button type="button" class="btn" id="y-connect">Connect and sync</button><button type="button" class="btn ghost" id="y-now">Sync now</button><button type="button" class="btn ghost" id="y-off">Disconnect</button></div>
     <details class="how"><summary>How to get a client ID (one time, free)</summary><ol>
       <li>Open console.cloud.google.com and create a project.</li>
@@ -244,7 +244,7 @@ function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 function lsDel(k){try{localStorage.removeItem(k)}catch(e){}}
 var DEFAULT_CLIENT="145088899720-uiobjpgphmj0qr3gv75tqk6g2ph0tmrt.apps.googleusercontent.com";/* optional: paste your client ID between the quotes to never be asked */
-function cid(){return lsGet("sync-client")||DEFAULT_CLIENT}
+function cid(){return DEFAULT_CLIENT}
 function meta(){try{return JSON.parse(lsGet("sync-meta")||"{}")}catch(e){return {}}}
 function setMeta(m){lsSet("sync-meta",JSON.stringify(m))}
 function syncKeys(){var o=keys();SKIP.forEach(function(k){delete o[k]});return o}
@@ -324,14 +324,11 @@ function watch(){
 }
 setInterval(watch,4000);
 (function(){var done=false;document.addEventListener("pointerup",function(){if(done)return;done=true;if(connected()&&!(sy.token&&Date.now()<sy.exp-60000))sync(false)},{once:false})})();
-document.getElementById("y-id").value=cid()||"";
-function idUi(){var h=!!cid();document.getElementById("y-idrow").hidden=h;document.getElementById("y-have").hidden=!h}
-idUi();document.getElementById("y-change").addEventListener("click",function(){document.getElementById("y-idrow").hidden=false;document.getElementById("y-have").hidden=true});
+document.getElementById("y-cid").textContent=cid()||"Not set. Edit DEFAULT_CLIENT in the code.";
 if(connected())ysay("Connected. Tap anywhere to sync, or press Sync now.","");
 document.getElementById("y-connect").addEventListener("click",function(){
-  var v=document.getElementById("y-id").value.trim()||cid()||"";
-  if(!/\.apps\.googleusercontent\.com$/.test(v)){ysay("That does not look like a client ID. It ends with .apps.googleusercontent.com","err");return}
-  lsSet("sync-client",v);idUi();sync(true);
+  if(!cid()){ysay("No client ID in the app code. Set DEFAULT_CLIENT and redeploy.","err");return}
+  sync(true);
 });
 document.getElementById("y-now").addEventListener("click",function(){sync(true)});
 document.getElementById("y-off").addEventListener("click",function(){lsDel("sync-on");lsDel("sync-meta");sy.token=null;ysay("Disconnected. Your data stays on this device and in Drive.","")});
