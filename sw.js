@@ -1,7 +1,7 @@
 /* byte_n_burn service worker: the app works offline. Bump VERSION to force an update. */
-var VERSION="bnb-v8";
+var VERSION="bnb-v9";
 var CORE=["./","./index.html","./manifest.webmanifest","./icons/icon-192.png","./icons/icon-512.png","./icons/icon-maskable-512.png"];
-self.addEventListener("install",function(e){e.waitUntil(caches.open(VERSION).then(function(c){return c.addAll(CORE)}).then(function(){return self.skipWaiting()}))});
+self.addEventListener("install",function(e){e.waitUntil(caches.open(VERSION).then(function(c){return c.addAll(CORE).then(function(){return Promise.all(["./pdf.min.js","./pdf.worker.min.js"].map(function(u){return c.add(u).catch(function(){})}))})}).then(function(){return self.skipWaiting()}))});
 self.addEventListener("activate",function(e){e.waitUntil(caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k!==VERSION}).map(function(k){return caches.delete(k)}))}).then(function(){return self.clients.claim()}))});
 self.addEventListener("fetch",function(e){
   var r=e.request;if(r.method!=="GET")return;

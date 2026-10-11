@@ -38,7 +38,7 @@ details.how ol{margin:8px 0 0;padding-left:20px;font-size:14px}
 #stage{flex:1;min-height:0;position:relative}
 .pane{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--bg)}
 div.pane{overflow-y:auto;padding:16px 16px 24px}
-.tabbar{flex:none;display:grid;grid-template-columns:repeat(6,1fr);border-top:1px solid var(--line);background:var(--surface);padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabbar{flex:none;display:grid;grid-template-columns:repeat(7,1fr);border-top:1px solid var(--line);background:var(--surface);padding-bottom:env(safe-area-inset-bottom,0px)}
 .tabbar button{background:none;border:0;color:var(--muted);font:500 11px var(--body);display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px 7px;cursor:pointer;min-width:0}
 .tabbar svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tabbar button[aria-selected="true"]{color:var(--accent)}
@@ -80,10 +80,23 @@ button:focus-visible,a:focus-visible,textarea:focus-visible,input:focus-visible{
 .sheet h2{font:800 22px var(--display);margin:0}
 textarea{font:400 12px/1.4 var(--mono);background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;min-height:90px}
 .row{display:flex;gap:8px;flex-wrap:wrap}
+#v-books.reading{padding:0;overflow:hidden;display:flex;flex-direction:column}
+.bk-top,.bk-bot{flex:none;display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface);border-bottom:1px solid var(--line)}
+.bk-bot{border-top:1px solid var(--line);border-bottom:0;justify-content:center}
+.bk-top b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 14px var(--body)}
+.bk-scroll{flex:1;min-height:0;overflow:auto;background:#5d6273;-webkit-overflow-scrolling:touch}
+.bk-in{width:max-content;min-width:100%;display:flex;justify-content:center;padding:8px}
+#bk-cv{background:#fff;display:block;box-shadow:0 1px 8px rgba(0,0,0,.4)}
+#bk-cv.night{filter:invert(1) hue-rotate(180deg)}
+.bk-bot .fine{white-space:nowrap}
+.bk-pg{width:48px;text-align:center;padding:8px 4px}
+.bk-bot .btn,.bk-top .btn{padding:8px 12px;align-self:center}
+.bk-card .tt{font-weight:600}
 [hidden]{display:none!important}</style></head><body>
 
 <div class="bar"><div class="brand">byte_n_<i>burn</i></div><span class="sub" id="today-sub"></span><button type="button" class="gear" id="gear"><span class="sd" id="sd"></span>Sync</button></div>
 <div id="stage">
+  <div class="pane" id="v-books" hidden></div>
   <div class="pane" id="v-today"><div class="hub" id="hub"><p class="fine">Loading your day</p></div></div>
 </div>
 <nav class="tabbar" id="tabs" aria-label="Sections">
@@ -91,6 +104,7 @@ textarea{font:400 12px/1.4 var(--mono);background:var(--bg);color:var(--ink);bor
   <button type="button" data-tab="career" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg>Career</button>
   <button type="button" data-tab="train" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12"/></svg>Train</button>
   <button type="button" data-tab="ig" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="3.5"/></svg>Posts</button>
+  <button type="button" data-tab="books" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h10"/></svg>Books</button>
   <button type="button" data-tab="money" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 18V9M10 18V5M16 18v-7M21 18H3"/></svg>Money</button>
   <button type="button" data-tab="plan" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Plan</button>
 </nav>
@@ -159,9 +173,12 @@ function show(t){
   tab=t;
   document.querySelectorAll("#tabs button").forEach(function(b){b.setAttribute("aria-selected",b.getAttribute("data-tab")===t?"true":"false")});
   document.getElementById("v-today").hidden=(t!=="today");
+  document.getElementById("v-books").hidden=(t!=="books");
   Object.keys(frames).forEach(function(k){frames[k].hidden=(k!==t)});
-  if(t!=="today"){load(t).hidden=false}
+  if(t==="books"){bkShow()}
+  else if(t!=="today"){load(t).hidden=false}
   else refreshHub();
+  if(t!=="books"&&typeof releaseLock==="function")releaseLock();
 }
 
 /* ---------- Today hub ---------- */
@@ -203,13 +220,18 @@ function refreshHub(){
     h+='<span class="fine">Setup: '+G.setupDone+' of '+G.setupTotal+' steps</span>';
   }
   h+='<button type="button" class="btn ghost" data-open="ig">Open Posts</button></section>';
+  var RB=bkProg(),RL=RB.last&&RB.books&&RB.books[RB.last];
+  h+='<section class="card"><div class="ch"><h2>Reading</h2><span class="cnt">'+(RL&&RL.pages?Math.round(Math.min(100,(RL.page||1)/RL.pages*100))+"%":"Library")+'</span></div>';
+  if(RL){var nm=title(RB.last.split("|")[0]);h+='<div><b>'+esc(nm)+'</b><div class="fine">'+(RL.pages?"Page "+(RL.page||1)+" of "+RL.pages:"Not started")+'</div></div>'+(RL.pages?bar(RL.page||1,RL.pages):"")+'<button type="button" class="btn" data-open="books" data-book="'+esc(RB.last)+'">Continue reading</button>'}
+  else h+='<p class="fine" style="margin:0">Add a PDF and your place is saved here.</p><button type="button" class="btn ghost" data-open="books">Open Books</button>';
+  h+='</section>';
   h+='<div class="tiles"><button type="button" class="tile" data-open="money"><b>Money</b><span class="fine">Loan-end plan</span></button><button type="button" class="tile" data-open="plan"><b>Plan</b><span class="fine">Week template, family, kitchen</span></button></div>';
   hub.dataset.ready="1";
   /* keep scroll position */
   var sc=document.getElementById("v-today"),y=sc.scrollTop;hub.innerHTML=h;sc.scrollTop=y;
 }
 document.getElementById("hub").addEventListener("click",function(e){
-  var o=e.target.closest("[data-open]");if(o){show(o.getAttribute("data-open"));return}
+  var o=e.target.closest("[data-open]");if(o){show(o.getAttribute("data-open"));var bk=o.getAttribute("data-book");if(bk)BK.lib.length?bkOpen(bk):bkList().then(function(l){BK.lib=l;bkOpen(bk)});return}
 });
 document.getElementById("hub").addEventListener("change",function(e){
   var el=e.target;if(!el.hasAttribute("data-ct"))return;
@@ -332,6 +354,119 @@ document.getElementById("y-connect").addEventListener("click",function(){
 });
 document.getElementById("y-now").addEventListener("click",function(){sync(true)});
 document.getElementById("y-off").addEventListener("click",function(){lsDel("sync-on");lsDel("sync-meta");sy.token=null;ysay("Disconnected. Your data stays on this device and in Drive.","")});
+
+/* ---------- Books (PDF reader) ---------- */
+var BK={db:null,pdf:null,id:null,name:"",page:1,pages:0,z:1,rt:0,task:null,lock:null,lib:[],loading:null};
+var CDN="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+var vb=document.getElementById("v-books");
+function bkProg(){try{return JSON.parse(lsGet("rb-books-v1")||"{}")}catch(e){return {}}}
+function bkSet(id,patch){var o=bkProg();o.last=id;o.books=o.books||{};o.books[id]=Object.assign({},o.books[id]||{},patch,{t:Date.now()});lsSet("rb-books-v1",JSON.stringify(o))}
+function bkNight(){return lsGet("bk-night")==="1"}
+function idb(){return new Promise(function(res,rej){if(BK.db)return res(BK.db);if(!window.indexedDB)return rej(new Error("This browser cannot store books."));
+  var r=indexedDB.open("bnb-books",1);r.onupgradeneeded=function(){var d=r.result;d.createObjectStore("meta",{keyPath:"id"});d.createObjectStore("files",{keyPath:"id"})};
+  r.onsuccess=function(){BK.db=r.result;res(BK.db)};r.onerror=function(){rej(r.error)}})}
+function itx(stores,mode,fn){return idb().then(function(db){return new Promise(function(res,rej){var t=db.transaction(stores,mode),out=fn(t);t.oncomplete=function(){res(out&&out.result!==undefined?out.result:out)};t.onerror=t.onabort=function(){rej(t.error||new Error("Storage failed. The device may be full."))}})})}
+function bkList(){return itx(["meta"],"readonly",function(t){return t.objectStore("meta").getAll()}).then(function(l){return (l||[]).sort(function(a,b){var p=bkProg().books||{};return ((p[b.id]||{}).t||b.added)-((p[a.id]||{}).t||a.added)})})}
+function mb(n){return n>=1048576?(n/1048576).toFixed(1)+" MB":Math.max(1,Math.round(n/1024))+" KB"}
+function title(n){return String(n).replace(/\.pdf$/i,"")}
+function loadPdfJs(){
+  if(window.pdfjsLib)return Promise.resolve();
+  if(BK.loading)return BK.loading;
+  function add(src){return new Promise(function(res,rej){var s=document.createElement("script");s.src=src;s.onload=res;s.onerror=function(){s.remove();rej(new Error("x"))};document.head.appendChild(s)})}
+  BK.loading=add("pdf.min.js").then(function(){pdfjsLib.GlobalWorkerOptions.workerSrc="pdf.worker.min.js"},function(){
+    return add(CDN+"pdf.min.js").then(function(){pdfjsLib.GlobalWorkerOptions.workerSrc=CDN+"pdf.worker.min.js"})
+  }).catch(function(){BK.loading=null;throw new Error("The reader could not load. Open the app once while online.")});
+  return BK.loading;
+}
+function bkMsg(t,err){var m=document.getElementById("bk-msg");if(m){m.textContent=t||"";m.style.color=err?"var(--accent)":"var(--muted)"}}
+function bkLibrary(){
+  releaseLock();var ltok=++BK.rt;
+  vb.classList.remove("reading");
+  var p=bkProg().books||{};
+  return bkList().then(function(l){
+    if(ltok!==BK.rt)return;BK.lib=l;
+    var h='<div class="hub"><div><p class="kicker">Library</p><h1>Books</h1></div>'+
+      '<label class="btn" style="align-self:flex-start;cursor:pointer">Add PDF books<input type="file" id="bk-file" accept="application/pdf,.pdf" multiple hidden></label>'+
+      '<p class="fine" id="bk-msg" style="margin:0"></p>';
+    if(!l.length)h+='<div class="card"><b>No books yet</b><span class="fine">Tap Add PDF books and pick files from your phone. They are stored on this device and open offline. Your page number syncs through Google Drive, the files do not.</span></div>';
+    l.forEach(function(b){var q=p[b.id]||{},pc=q.pages?Math.round(Math.min(100,(q.page||1)/q.pages*100)):0;
+      h+='<div class="card bk-card"><div class="ch"><b class="tt">'+esc(title(b.name))+'</b><span class="cnt">'+mb(b.size)+'</span></div>'+
+        '<span class="fine">'+(q.page?"Page "+q.page+(q.pages?" of "+q.pages+" · "+pc+"%":""):"Not started")+'</span>'+(q.pages?bar(q.page||1,q.pages):"")+
+        '<div class="row"><button type="button" class="btn" data-bk-open="'+esc(b.id)+'">'+(q.page?"Continue":"Read")+'</button><button type="button" class="btn ghost" data-bk-del="'+esc(b.id)+'">Remove</button></div></div>'});
+    vb.innerHTML=h;
+  }).catch(function(e){vb.innerHTML='<div class="hub"><h1>Books</h1><div class="note">'+esc(e.message)+'</div></div>'});
+}
+function addFiles(files){
+  var list=[].slice.call(files||[]).filter(function(f){return /pdf$/i.test(f.name)||f.type==="application/pdf"});
+  if(!list.length){bkMsg("Choose PDF files.",true);return}
+  bkMsg("Saving "+list.length+" book"+(list.length>1?"s":"")+"…");
+  var chain=Promise.resolve(),failed=0;
+  list.forEach(function(f){chain=chain.then(function(){var id=f.name+"|"+f.size;
+    return itx(["meta","files"],"readwrite",function(t){t.objectStore("meta").put({id:id,name:f.name,size:f.size,added:Date.now()});t.objectStore("files").put({id:id,blob:f})}).catch(function(){failed++})})});
+  chain.then(function(){
+    try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+    return bkLibrary()}).then(function(){setTimeout(function(){bkMsg(failed?failed+" could not be saved. Storage may be full.":"Added.",!!failed)},200)});
+}
+function bkOpen(id){
+  var meta=BK.lib.filter(function(b){return b.id===id})[0];
+  BK.rt++;vb.hidden=false;vb.classList.add("reading");
+  vb.innerHTML='<div class="bk-top"><button type="button" class="btn ghost" id="bk-back">Back</button><b id="bk-title">Opening…</b></div><div class="bk-scroll" id="bk-scroll"><div class="bk-in"><p class="fine" style="color:#fff">Opening…</p></div></div>';
+  document.getElementById("bk-back").onclick=bkLibrary;
+  Promise.all([loadPdfJs(),itx(["meta","files"],"readonly",function(t){return t.objectStore("files").get(id)}),itx(["meta"],"readonly",function(t){return t.objectStore("meta").get(id)})]).then(function(r){
+    var rec=r[1],m=r[2]||meta;if(!rec||!m)throw new Error("That book is not stored on this device. Add the file again and your page will be kept.");
+    BK.name=m.name;return rec.blob.arrayBuffer().then(function(ab){return pdfjsLib.getDocument({data:ab}).promise})
+  }).then(function(pdf){
+    if(BK.pdf){try{BK.pdf.destroy()}catch(e){}}
+    BK.pdf=pdf;BK.id=id;BK.pages=pdf.numPages;
+    var q=(bkProg().books||{})[id]||{};BK.page=Math.min(Math.max(1,q.page||1),BK.pages);BK.z=1;
+    bkSet(id,{page:BK.page,pages:BK.pages});
+    vb.innerHTML='<div class="bk-top"><button type="button" class="btn ghost" id="bk-back">Back</button><b id="bk-title"></b><button type="button" class="btn ghost" id="bk-night" aria-pressed="false">Night</button></div>'+
+      '<div class="bk-scroll" id="bk-scroll"><div class="bk-in"><canvas id="bk-cv"></canvas></div></div>'+
+      '<div class="bk-bot"><button type="button" class="btn ghost" id="bk-prev" aria-label="Previous page">&#8249;</button><input type="text" inputmode="numeric" id="bk-pg" class="bk-pg" aria-label="Page number"><span class="fine" id="bk-of"></span><button type="button" class="btn ghost" id="bk-next" aria-label="Next page">&#8250;</button><button type="button" class="btn ghost" id="bk-zo" aria-label="Zoom out">&minus;</button><button type="button" class="btn ghost" id="bk-zi" aria-label="Zoom in">+</button></div>';
+    document.getElementById("bk-title").textContent=title(BK.name);
+    document.getElementById("bk-back").onclick=bkLibrary;
+    document.getElementById("bk-prev").onclick=function(){bkGo(BK.page-1)};
+    document.getElementById("bk-next").onclick=function(){bkGo(BK.page+1)};
+    document.getElementById("bk-zi").onclick=function(){bkZoom(.25)};
+    document.getElementById("bk-zo").onclick=function(){bkZoom(-.25)};
+    var pg=document.getElementById("bk-pg");pg.onchange=function(){var n=parseInt(pg.value,10);bkGo(isNaN(n)?BK.page:n)};pg.onfocus=function(){pg.select()};
+    var nb=document.getElementById("bk-night");nb.onclick=function(){lsSet("bk-night",bkNight()?"0":"1");bkNightUi()};
+    var sc=document.getElementById("bk-scroll"),x0=0,y0=0;
+    sc.addEventListener("touchstart",function(e){x0=e.touches[0].clientX;y0=e.touches[0].clientY},{passive:true});
+    sc.addEventListener("touchend",function(e){if(BK.z>1.01||e.changedTouches.length!==1)return;var dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;if(Math.abs(dx)>70&&Math.abs(dy)<45)bkGo(BK.page+(dx<0?1:-1))},{passive:true});
+    bkNightUi();bkRender();getLock();
+  }).catch(function(e){vb.innerHTML='<div class="bk-top"><button type="button" class="btn ghost" id="bk-back">Back</button><b>Could not open</b></div><div class="hub" style="padding:16px"><div class="note">'+esc(e.message||"Could not open this PDF.")+'</div></div>';document.getElementById("bk-back").onclick=bkLibrary});
+}
+function bkNightUi(){var c=document.getElementById("bk-cv"),b=document.getElementById("bk-night"),n=bkNight();if(c)c.classList.toggle("night",n);if(b){b.setAttribute("aria-pressed",n?"true":"false");b.textContent=n?"Day":"Night"}}
+function bkGo(n){if(!BK.pdf)return;n=Math.min(Math.max(1,n|0),BK.pages);if(n===BK.page&&document.getElementById("bk-cv").width)return;BK.page=n;bkRender()}
+function bkZoom(d){BK.z=Math.min(3,Math.max(.75,Math.round((BK.z+d)*100)/100));bkRender(true)}
+function bkRender(keep){
+  if(!BK.pdf)return;var tok=++BK.rt,n=BK.page;
+  var pgI=document.getElementById("bk-pg"),of=document.getElementById("bk-of");if(pgI)pgI.value=n;if(of)of.textContent="/ "+BK.pages;
+  bkSet(BK.id,{page:n,pages:BK.pages});
+  BK.pdf.getPage(n).then(function(pg){
+    if(tok!==BK.rt)return;
+    var sc=document.getElementById("bk-scroll"),cv=document.getElementById("bk-cv");if(!sc||!cv)return;
+    var w=sc.clientWidth-16,v1=pg.getViewport({scale:1}),s=w/v1.width*BK.z,d=Math.min(window.devicePixelRatio||1,2.5),v=pg.getViewport({scale:s*d});
+    if(BK.task){try{BK.task.cancel()}catch(e){}}
+    cv.width=Math.floor(v.width);cv.height=Math.floor(v.height);cv.style.width=Math.floor(v.width/d)+"px";cv.style.height=Math.floor(v.height/d)+"px";
+    BK.task=pg.render({canvasContext:cv.getContext("2d"),viewport:v});BK.task.promise.then(function(){cv.dataset.ok=n}).catch(function(){});
+    if(!keep)sc.scrollTop=0;
+  }).catch(function(){});
+}
+function getLock(){try{if(navigator.wakeLock&&!BK.lock)navigator.wakeLock.request("screen").then(function(l){BK.lock=l;l.addEventListener("release",function(){BK.lock=null})}).catch(function(){})}catch(e){}}
+function releaseLock(){try{if(BK.lock)BK.lock.release()}catch(e){}BK.lock=null}
+function bkShow(){if(vb.classList.contains("reading")&&BK.pdf){getLock();return}bkLibrary()}
+vb.addEventListener("click",function(e){
+  var o=e.target.closest("[data-bk-open]");if(o){bkOpen(o.getAttribute("data-bk-open"));return}
+  var d=e.target.closest("[data-bk-del]");if(d){var id=d.getAttribute("data-bk-del"),b=BK.lib.filter(function(x){return x.id===id})[0];
+    if(b&&confirm("Remove "+title(b.name)+" from this device? Your page number is kept.")){itx(["meta","files"],"readwrite",function(t){t.objectStore("meta").delete(id);t.objectStore("files").delete(id)}).then(bkLibrary)}}
+});
+vb.addEventListener("change",function(e){if(e.target.id==="bk-file"){addFiles(e.target.files);e.target.value=""}});
+document.addEventListener("keydown",function(e){if(tab!=="books"||!BK.pdf||!vb.classList.contains("reading")||/INPUT|TEXTAREA/.test((e.target||{}).tagName||""))return;if(e.key==="ArrowRight"||e.key==="PageDown")bkGo(BK.page+1);else if(e.key==="ArrowLeft"||e.key==="PageUp")bkGo(BK.page-1)});
+window.addEventListener("resize",function(){if(tab==="books"&&BK.pdf&&vb.classList.contains("reading"))bkRender(true)});
+document.addEventListener("visibilitychange",function(){if(!document.hidden&&tab==="books"&&vb.classList.contains("reading"))getLock()});
+window.__bk=BK;
 
 /* ---------- start ---------- */
 ["career","train","ig"].forEach(load);

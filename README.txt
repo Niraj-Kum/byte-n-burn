@@ -7,7 +7,7 @@ What it is
   It works offline once opened. Your ticks and notes are saved on the device.
 
 Files
-  index.html, manifest.webmanifest, sw.js, icons/   (keep them together)
+  index.html, manifest.webmanifest, sw.js, pdf.min.js, pdf.worker.min.js, icons/   (keep them together)
 
 How to put it on your Android phone (about 10 minutes, free)
   An installable app must be served over https. Pick one:
@@ -47,6 +47,15 @@ Google Drive sync (optional, keeps phone and laptop in step)
     - If two devices change the same page before syncing, the two versions are merged. A tick
       you removed on one device can come back from the other.
     - Sync needs the https address, it will not work when index.html is opened as a local file.
+
+Books (PDF reader)
+  Tap Books > Add PDF books and pick files. They are stored on the phone and open offline.
+  Swipe left or right, or use the arrows, to turn pages. Type a page number to jump.
+  The + and - buttons zoom. Night inverts the colours for reading in bed.
+  Your page is remembered, shows on Today, and syncs through Google Drive. The files themselves
+  do not sync, so add each book on every device. Adding the same file again resumes your page.
+  Browsers can clear stored files if the phone is very low on space, so keep the originals.
+  Pdf.min.js and pdf.worker.min.js are the open-source PDF.js reader (Mozilla). Upload them too.
 
 Manual backup
   Tap Sync (top right) > Copy backup. Paste it into a note now and then.
