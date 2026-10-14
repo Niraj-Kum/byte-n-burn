@@ -51,7 +51,8 @@ Google Drive sync (optional, keeps phone and laptop in step)
 Books (PDF reader)
   Tap Books > Add PDF books and pick files. They are stored on the phone and open offline.
   Swipe left or right, or use the arrows, to turn pages. Type a page number to jump.
-  The + and - buttons zoom. Night inverts the colours for reading in bed.
+  Pinch with two fingers to zoom in and out (the page stays under your fingers), or double-tap to
+  jump between fit-to-width and 2.5x. The + and - buttons also zoom. Night inverts the colours for reading in bed.
   Your page is remembered, shows on Today, and syncs through Google Drive. The files themselves
   do not sync, so add each book on every device. Adding the same file again resumes your page.
   Browsers can clear stored files if the phone is very low on space, so keep the originals.
